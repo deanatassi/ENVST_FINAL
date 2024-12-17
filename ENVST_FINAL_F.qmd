@@ -1,0 +1,434 @@
+---
+title: "Examining Chlorophyll Levels in the Chesapeake Bay"
+author: "Dean Atassi"
+format: pdf
+editor: visual
+---
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+
+ocean_data <- read.csv("~/Desktop/ENVST_FINAL/AN_OCEAN_2007-2024.csv") # can also do skip first 2 rows, header = FALSE
+
+met_data <-  read.csv("~/Desktop/ENVST_FINAL/AN_MET_2007-2024.csv")
+
+odata <- ocean_data[-(1:3),]
+mdata <- met_data[-(1:3),]
+
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(stargazer)
+library(dynlm)
+```
+
+In this report I will be exploring how aquatic factors affect chlorophyll.a concentration in the Chesapeake Bay, and try to produce a time series model that can accurately determine what factors contribute the most to chlorophyll concentration.
+
+# Chlorophyll and Phytoplankton in Aquatic Ecosystems
+
+Chlorophyll is a green pigment vital for enabling photosynthesis by capturing the sun's energy by absorbing red and blue wavelengths of light, and reflecting green, thus providing it its green color. There are several types of chlorophyll, however the most abundant is chlorophyll.a, which is the primary pigment in photosynthesis. Measuring chlorophyll.a concentration provides researchers with an estimate of how much phytoplankton might be present in a given body of water.
+
+Phytoplankton, otherwise known as microalgae, serve as the foundation of aquatic food webs because they carry out the process of photosynthesis with the help of chlorophyll.a. They offer numerous benefits associated with photosynthesis including oxygen production—phytoplankton produce at least half of the earth's oxygen—carbon cycling, nutrient cycling, and climate regulation.[^1][^2]
+
+[^1]: Environmental Protection Agency. "Indicators: Phytoplankton." National Aquatic Resource Surveys. Accessed December 11, 2024.
+
+[^2]: Many of these benefits are interrelated, for example, the carbon sequestration that is the result of carbon cycling is closely related with climate regulation as the atmospheric Co2 levels are reduced.
+
+Despite the vast benefits phytoplankton provide, excessive levels can lead to algal blooms, which have a negative impact on water quality and ecosystem health. These blooms can cause lower oxygen levels in deeper waters and produce toxic compounds that are harmful to ocean life.[^3] Causal factors for blooms range from nutrient pollution resulting from runoff and human-led land use changes to rising water temperatures, stronger sunlight, and events generally associated with climate change.
+
+[^3]: National Oceanic and Atmospheric Administration. "Phytoplankton." Last modified June 16, 2024. Accessed December 11, 2024. <https://oceanservice.noaa.gov/facts/phyto.html>.
+
+Although there is no universally optimal concentration of phytoplankton, I hypothesize that algal blooms and excessive levels of phytoplankton can be identified during periods of unsually high chlorophyll concentrations.
+
+# Chesapeake Bay Background
+
+My region of focus for this study is the Chesapeake Bay, which runs off the coast of Maryland and Virginia and is connected to the Atlantic ocean at its most southern point, as shown in Figure 1. The DMV area relies heavily on the bay's ecosystem to feed local residents. It's the largest estuary in the U.S. and is one of its most productive fisheries, responsible for over 33% of annual blue crab harvest.[^4] The bay's health is therefore very important to the economic health of the local area as maintaining a sustainable bay ecosystem can ensure job stability for surrounding fisherman, higher supplies of seafood, and lower food costs for local residents. It's also very important for human health as it serves as a major source of drinking water for the region of approximately 18 million people. [^5]
+
+[^4]: Maryland Department of the Environment. "What Is the Bay." Accessed December 11, 2024. <https://mde.maryland.gov/programs/Water/TMDL/TMDLImplementation/Pages/what-is-the-bay.aspx>.
+
+[^5]: Chesapeake Bay Foundation. "Economy & Human Health." Accessed December 11, 2024. <https://www.cbf.org/issues/economy-human-health/index.html>.
+
+# Prior Literature & Factors Influencing Chlorophyll Levels
+
+A study from *Science of the Total Environment* titled, *Linking water environmental factors and the local watershed landscape to the chlorophyll a concentration in reservoir bays,* examines variations in chlrophyll.a according to environmental factors in the Danjiangkou Resevoir in China from May 2015-2018.[^6] The authors find that "water chemistry" had greater positive effects on chlorophyll.a concentration during periods of discharge, which is likely attributable to higher water runoffs and a generally lower water level. Water chemistry is composed of multiple factors including water temperature and turbidity. Despite algal blooms being more likely to occur in discharge periods due to higher temperatures, the authors found increased chlorophyll.a concentration when temperature was higher to be lower during the discharge period. However, they attribute this fact to dilution caused by large amounts of precipitation. The authors also found that lower levels of turbidity permitted larger levels of sunlight to reach deeper parts of the water, thus increasing the presence of chlorophyll.a.
+
+[^6]: Li, Nanxin, Jian Wang, Wei Yin, Haiyan Jia, Jianfeng Xu, Rui Hao, Zhiming Zhong, and Zhihua Shi. "Contributions of Water Environment and Local Watershed Landscape to the Chlorophyll a Concentration in Reservoir Bays." Science of the Total Environment 758 (2021): 143617. <https://doi.org/10.1016/j.scitotenv.2020.143617>.
+
+A study on Chlrophyll.a concentration in the Tri An Reservoir in Vietnam noted that higher levels of dissolved oxygen during the wet season were positively associated with chlorophyll.a concentration.
+
+Although there are no popular studies examining the relationship between water salinity and chlorophyll.a concentration, this study in the *South African Journal of Botany* titled, *Effect of salt stress on growth, chlorophyll content, lipid peroxidation and antioxidant defense systems in Phaseolus vulgaris L.,* found that photosynthetic pigments tended to decrease with increasing salinity and could increase oxidative stress.
+
+# Data Background
+
+The data were collected from NOAA's Chesapeake Bay Interpretive Buoy system from 2010 to 2024. The system is comprised of a network of buoys that collect data on oceanic and meteorological factors including chlorophyll.a levels, dissolved oxygen, water salinity, barometric pressure, water / air temperature, and more. Data is collected every sixty minutes. For this study I decided to focus on data from the Annapolis buoy. The Annapolis region of the bay is located at the mouth of the Severn river, which is a large contributing factor to water quality in the region due to the high levels of construction in the surrounding areas that increase the risk of runoffs and potentially harmful effects. It's also an important spot for crab harvesting and tourism, so I chose to focus on data from this area to have a better understanding of what external effects of water quality might have on the area.
+
+## Data Cleaning Approach
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+##### Odata Cleaning
+# Parsing Date
+odata$dateF <- dmy_hms(odata$Time..UTC.)
+
+# Creating daily / monthly data
+
+odata$doy <- yday(odata$dateF)
+odata$month <- month(odata$dateF)
+odata$year <- year(odata$dateF)
+
+odata$Salinity <- as.numeric(odata$Salinity)
+odata$Chlorophyll <- as.numeric(odata$Chlorophyll)
+odata$Temperature <- as.numeric(odata$Temperature)
+odata$Turbidity <- as.numeric(odata$Turbidity)
+odata$Oxygen <- as.numeric(odata$Oxygen)
+
+odata <- odata %>% rename(Sigwave_height = Significant.wave.height) 
+
+odata$Sigwave_height <- as.numeric(odata$Sigwave_height)
+
+daily_odata <- 
+  odata %>% 
+  group_by(year,month,doy) %>% 
+  summarise(daily_salinity = mean(Salinity, na.rm = TRUE),
+            daily_chlorophyll = mean(Chlorophyll, na.rm = TRUE),
+            daily_temperature = mean(Temperature, na.rm = TRUE),
+            daily_turbidity = mean(Turbidity, na.rm = TRUE),
+            daily_oxygen = mean(Oxygen, na.rm = TRUE),
+            daily_Sigwave = mean(Sigwave_height, na.rm = TRUE),
+            n_salinity = sum(!is.na(Salinity)), 
+            n_chlorophyll = sum(!is.na(Chlorophyll)),
+            n_temperature = sum(!is.na(Temperature)),
+            n_turbidity = sum(!is.na(Turbidity)), 
+            n_oxygen = sum(!is.na(Oxygen)),
+            n_Sigwave = sum(!is.na(Sigwave_height)))
+
+daily_odata <- daily_odata %>% filter(n_salinity >= 15,
+                                      n_chlorophyll >= 15,
+                                      n_temperature >= 15,
+                                      n_turbidity >= 15,
+                                      n_oxygen >= 15,
+                                      n_Sigwave >= 15)
+
+daily_odata$date <- ymd(paste0(daily_odata$year, "-01-01")) + days(daily_odata$doy - 1)
+
+all_dates <- tibble(
+  date = seq(
+    from = min(daily_odata$date, na.rm = TRUE), 
+    to = max(daily_odata$date, na.rm = TRUE), 
+    by = "day"
+  )
+)
+
+graphing_odata <- full_join(all_dates, daily_odata, by = "date")
+
+```
+
+I began by converting time-stamp variables into an adequate date / time format using the lubridate package and subsequently converted all variables from character to numeric formats so that they could be used for analysis. Because observations occur every sixty minutes I decided to consolidate observations into a daily format using a grouping function from the dplyr package and taking the mean of hourly observations for a day, for each variable. I eliminated observations in the daily format that consisted of means calculated using less than 15 observations, i.e observations where there were less than 15 hours of data for an individual day were taken out.
+
+There are several winter periods in which the buoy was not in use, and thus not collecting data. Time series graphs shown below note these periods of missing data with gaps between periods where observations present. Time series and regression analyses are minimally affected, as shown below.
+
+# Chlorophyll and Independent Variable Trends
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+
+ggplot(graphing_odata, aes(x = date, y = daily_chlorophyll)) + geom_line() + ggtitle("Line Graph of Chlorophyll Levels from 2010 to 2022") + labs(x = "Date", y = "Daily Chlorophyll Levels (ug/L)")
+```
+
+Chlorophyll is measured in Micrograms per Liter ("ug/L") and appears to have a strong amount of variability that increases from the beginning of the data in 2010 into the next decade starting in 2020, reaching a new peak at 60 ug/L. Despite several gaps in the data it appears that the time series is relatively stationary despite high amounts of volatility, as the long term average appears to be staying relatively below 20 ug/L, even as the data goes beyond 2022.
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+
+chlorophyll_ts <- ts(daily_odata$daily_chlorophyll, start = c(2010, 1), frequency = 365)
+
+chlorophyll_decomp <- stl(chlorophyll_ts, s.window = "periodic")
+
+plot(chlorophyll_decomp, main = "Chlorophyll Time Series Decomposition")
+```
+
+By performing a time series decomposition we can see that the trend portion appears to be relatively random, despite a large increase from 2010 to 2012 and decrease after 2016 into 2018. There is no strong directionality in the trend portion of the decomposition to convincingly argue that the time series is non-stationary. Note that the time series data in the figure above goes up to 2018 to maximize the interpretability of the series, and to minimize the number of data gaps present.
+
+To ensure the lack of directionality is not attributable to the data gap occurring in the 2015/early 2016 period I examine the same series up to the beginning of the 2015 period.
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+
+chlorophyll_ts2 <- ts(daily_odata$daily_chlorophyll, start = c(2010,1), end = c(2015,12), frequency = 365)
+
+chlorophyll_decomp2 <- stl(chlorophyll_ts2, s.window = "periodic")
+plot(chlorophyll_decomp2, main = "Chlorophyll Time Series Decomposition up to 2015")
+```
+
+Although the increasing and decreasing periods appear to be relatively smoother, there is still no persistent directionality throughout the series, and thus we can still assume that the series is stationary for the ease of future analysis.
+
+## Water Temperature
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+
+ggplot(graphing_odata, aes(x = date, y = daily_temperature)) + geom_line() + ggtitle("Line Graph of Daily Temperature from 2010 to 2022") + labs(x = "Date", y = "Daily Temperature in Celcius")
+```
+
+The water temperature contains a substantial amount of seasonality, which is to be expected as the temperature will be much lower (near freezing) in winter months and higher in warmer summer months. Even with sizable gaps in the data, one can infer what the overall trends would look like fairly accurately.
+
+## Salinity
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+
+ggplot(graphing_odata, aes(x = date, y = daily_salinity)) + geom_line() + ggtitle("Line Graph of Water Salinity from 2010 to 2022") + labs(x = "Date", y = "Daily Salinity Levels PSU")
+```
+
+Salinity levels, measured in Practical Salinity Units ("PSU") appear to stay mostly below 15 PSU from 2010 to 2020, and then doubles in early 2020 to 30 PSU. The cause of this substantial increase is unknown and it's highly unlikely that the increase is random given its significant deviation from the norm. This specific part of the data is not included in later time series and regression analysis, which only include data up to 2018, the same is true for all independent variables.
+
+## Turbidity
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+
+ggplot(graphing_odata, aes(x = date, y = daily_turbidity)) + geom_line() + ggtitle("Line Graph of Turbidity Levels from 2010 to 2022") + labs(x = "Date", y = "Daily Turbidity Levels NTU")
+```
+
+Turbidity, measured in Nepelometric Turbidity Units ("NTU"), exhibits very high levels of variability throughout the observation period. Although the exact causes are unknown, they could certainly be an initial sign of previous algal blooms that occurred as they would certainly fog up water as a result of phytoplankton build-up. These increases can also be attributable to heavy rainstorms and flooding periods, which might serve as a better explanation for the periodicity of these large increases that occur every few years.
+
+## Dissolved Oxygen
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+ggplot(graphing_odata, aes(x = date, y = daily_oxygen)) + geom_line() + ggtitle("Line Graph of Oxygen Levels from 2010 to 2022") + labs(x = "Date", y = "Daily Oxygen Levels ml/L")
+```
+
+Dissolved oxygen—measured in milliliters per Liter—like water temperature, exhibits high levels of seasonality throughout the observation period. This trend might make sense as oxygen solubility decreases when temperature increases, making it difficult for water to hold more oxygen.
+
+# Models
+
+In this section I try perform time series analysis of chlorophyll concentration to estimate the relative strength and importance of contributing to chlorophyll abundance.
+
+## Autoregressive Model with 4 Period Lag
+
+I start with a simple AR model with a maximum lag of four periods. I chose four periods because concentration is temporally dependent on concentrations in previous periods, and I believed four periods was a reasonable amount of time to capture delayed effects of previous concentrations on the present.
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+ar4_model <- arima(chlorophyll_ts, order = c(4, 0, 0))  # (p = 4, d = 0, q = 0)
+#stargazer(ar4_model, type = 'latex', title = "AR4", out = "ar4.latex")
+
+#print(ar4_model)
+```
+
+```{=tex}
+\begin{table}[!htbp] \centering   \caption{AR4}   \label{} \begin{tabular}{@{\extracolsep{5pt}}lc} \\[-1.8ex]\hline \hline \\[-1.8ex]  & \multicolumn{1}{c}{\textit{Dependent variable:}} \\ \cline{2-2} \\[-1.8ex] & chlorophyll\_ts \\ \hline \\[-1.8ex]  ar1 & 0.880$^{***}$ \\   & (0.019) \\   & \\  ar2 & $-$0.025 \\   & (0.025) \\   & \\  ar3 & 0.012 \\   & (0.025) \\   & \\  ar4 & 0.037$^{**}$ \\   & (0.019) \\   & \\  intercept & 10.672$^{***}$ \\   & (0.661) \\   & \\ \hline \\[-1.8ex] Observations & 2,870 \\ Log Likelihood & $-$7,590.335 \\ $\sigma^{2}$ & 11.600 \\ Akaike Inf. Crit. & 15,192.670 \\ \hline \hline \\[-1.8ex] \textit{Note:}  & \multicolumn{1}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ \end{tabular} \end{table}
+```
+The first lag variable is clearly the most practically and statistically significant, at the 1% level and implies that it contributes approximately 88% of its value to current chlorophyll concentration. Interestingly, the second and third lagged variables are not statistically significant, and are both within one standard deviation of zero, implying like they likely have no effect on current chlorophyll concentration. The fourth lag variable is statistically significant at the 5% level but is much smaller in magnitude than the first lag variable, and thus has less practical significance for the model.
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+plot(residuals(ar4_model), main = "Residuals of AR(4) Model", ylab = "Residuals")
+
+```
+
+Aside from a very large spike in 2010, the residuals for the AR4 model appear very noisy. This noise might indicate that the model performed well in predicting chlorophyll concentration with four lags.
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+acf(residuals(ar4_model), main = "ACF of Residuals")
+```
+
+Examining the Autocorrelation Function Plot we see that there is a gradual decay in ACF as the lags become greater. This behavior is consistent with autoregressive behavior and indicates that the AR4 model is a good fit for the chlorophyll concentration data.
+
+## Autoregressive Model with Exogenous Variables (ARX)
+
+Next I examine new AR models to quantify the relationship between the independent variables and better understand their relative effects on chlorophyll concentration. Given that in the previous AR model only the first lagged chlorophyll variable was of strong practical significant, I've decided to only use one lag for this model to maximize the chances that we observe a relationship that is practically significant. Each independent variable is lagged one period.
+
+```{r}
+#| echo: false
+#| warninng: false
+#| eval: true
+
+oxygen_ts <- ts(daily_odata$daily_oxygen, frequency = 365, start = c(2010,1))
+turbidity_ts <- ts(daily_odata$daily_turbidity, frequency = 365, start = c(2010,1))
+salinity_ts <- ts(daily_odata$daily_salinity, frequency = 365, start = c(2010,1))
+temperature_ts <- ts(daily_odata$daily_temperature, frequency = 365, start = c(2010,1))
+
+lagged_oxygen <- stats::lag(oxygen_ts,1)
+lagged_turbidity <- stats::lag(turbidity_ts,1)
+lagged_salinity <- stats::lag(salinity_ts,1)
+lagged_temperature <- stats::lag(temperature_ts,1)
+
+xreg <- cbind(lagged_oxygen,lagged_turbidity,lagged_salinity,lagged_temperature)
+
+arx_model <- arima(chlorophyll_ts, order = c(1,0,0),xreg = xreg)
+#print(arx_model)
+#stargazer(arx_model, type = 'latex', title = "1-Period Lag ARX Model", out = "arx1.latex")
+```
+
+```{=tex}
+\begin{table}[!htbp] \centering   \caption{1-Period Lag ARX Model}   \label{} \begin{tabular}{@{\extracolsep{5pt}}lc} \\[-1.8ex]\hline \hline \\[-1.8ex]  & \multicolumn{1}{c}{\textit{Dependent variable:}} \\ \cline{2-2} \\[-1.8ex] & chlorophyll\_ts \\ \hline \\[-1.8ex]  ar1 & 0.914$^{***}$ \\   & (0.008) \\   & \\  intercept & $-$16.742$^{***}$ \\   & (1.777) \\   & \\  lagged\_oxygen & 1.635$^{***}$ \\   & (0.079) \\   & \\  lagged\_turbidity & 0.087$^{***}$ \\   & (0.015) \\   & \\  lagged\_salinity & 0.543$^{***}$ \\   & (0.073) \\   & \\  lagged\_temperature & 0.419$^{***}$ \\   & (0.064) \\   & \\ \hline \\[-1.8ex] Observations & 2,870 \\ Log Likelihood & $-$7,382.788 \\ $\sigma^{2}$ & 10.037 \\ Akaike Inf. Crit. & 14,779.580 \\ \hline \hline \\[-1.8ex] \textit{Note:}  & \multicolumn{1}{r}{$^{*}$p$<$0.1; $^{**}$p$<$0.05; $^{***}$p$<$0.01} \\ \end{tabular} \end{table}
+```
+The model initially appears to be very strong as all variables are statistically significant at the 1% level, implying that they are likely important contributing factors to chlorophyll concentration. The lagged dissolved oxygen variable is the most practically significant, which implies that a one unit increase in the most recent lagged period, results in a 1.635 ug/L increase in chlorophyll concentration. Notably, the lagged chlorophyll variable also increased in magnitude from the AR4 model above and implies that 91.4% of the current concentration is attributable to the concentration one day prior.
+
+# Results
+
+The results of this investigation suggest that chlorophyll concentration can be adequately modeled using an AR4 model, however an ARX model including other aquatic variables like salinity, dissolved oxygen, and turbidity can enhance the model's predictive accuracy.
+
+# Appendix with Descriptions and Code
+
+![Map of Chesapeake Bay](images/Chesapeake%20Bay%20Map.jpg){fig-align="center" width="340"}
+
+## Github Link
+
+## Code
+
+```{r}
+#| echo: true
+#| eval: false
+#| warning: false
+
+ocean_data <- read.csv("~/Desktop/ENVST_FINAL/AN_OCEAN_2007-2024.csv") 
+
+odata <- ocean_data[-(1:3),] # Dropping Data descriptions in first rows
+
+# Loading libraries
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(stargazer)
+##### Odata Cleaning
+# Parsing Date
+odata$dateF <- dmy_hms(odata$Time..UTC.)
+
+# Creating daily / monthly data
+
+odata$doy <- yday(odata$dateF)
+odata$month <- month(odata$dateF)
+odata$year <- year(odata$dateF)
+
+odata$Salinity <- as.numeric(odata$Salinity)
+odata$Chlorophyll <- as.numeric(odata$Chlorophyll)
+odata$Temperature <- as.numeric(odata$Temperature)
+odata$Turbidity <- as.numeric(odata$Turbidity)
+odata$Oxygen <- as.numeric(odata$Oxygen)
+
+odata <- odata %>% rename(Sigwave_height = Significant.wave.height) 
+
+odata$Sigwave_height <- as.numeric(odata$Sigwave_height)
+
+# Putting data in daily format by taking the mean of all the observations in one day
+# also grouping by year, month, and doy
+daily_odata <- 
+  odata %>% 
+  group_by(year,month,doy) %>% 
+  summarise(daily_salinity = mean(Salinity, na.rm = TRUE),
+            daily_chlorophyll = mean(Chlorophyll, na.rm = TRUE),
+            daily_temperature = mean(Temperature, na.rm = TRUE),
+            daily_turbidity = mean(Turbidity, na.rm = TRUE),
+            daily_oxygen = mean(Oxygen, na.rm = TRUE),
+            daily_Sigwave = mean(Sigwave_height, na.rm = TRUE),
+            n_salinity = sum(!is.na(Salinity)), 
+            n_chlorophyll = sum(!is.na(Chlorophyll)),
+            n_temperature = sum(!is.na(Temperature)),
+            n_turbidity = sum(!is.na(Turbidity)), 
+            n_oxygen = sum(!is.na(Oxygen)),
+            n_Sigwave = sum(!is.na(Sigwave_height)))
+
+# Filtering for observations where there are at least 15 hours of data
+daily_odata <- daily_odata %>% filter(n_salinity >= 15,
+                                      n_chlorophyll >= 15,
+                                      n_temperature >= 15,
+                                      n_turbidity >= 15,
+                                      n_oxygen >= 15,
+                                      n_Sigwave >= 15)
+
+# Formatting date
+daily_odata$date <- ymd(paste0(daily_odata$year, "-01-01")) + days(daily_odata$doy - 1)
+
+
+#Making data frame specifically for graphing
+all_dates <- tibble(
+  date = seq(
+    from = min(daily_odata$date, na.rm = TRUE), 
+    to = max(daily_odata$date, na.rm = TRUE), 
+    by = "day"
+  )
+)
+
+
+graphing_odata <- full_join(all_dates, daily_odata, by = "date")
+
+# Chlorophyll Plot 
+ggplot(graphing_odata, aes(x = date, y = daily_chlorophyll)) + geom_line() + ggtitle("Line Graph of Chlorophyll Levels from 2010 to 2022") + labs(x = "Date", y = "Daily Chlorophyll Levels (ug/L)")
+
+# Time Series Decomp for Chlorophyll
+chlorophyll_ts <- ts(daily_odata$daily_chlorophyll, start = c(2010, 1), frequency = 365)
+
+chlorophyll_decomp <- stl(chlorophyll_ts, s.window = "periodic")
+
+plot(chlorophyll_decomp, main = "Chlorophyll Time Series Decomposition")
+
+# Plots of Independent Variables
+ggplot(graphing_odata, aes(x = date, y = daily_temperature)) + geom_line() + ggtitle("Line Graph of Daily Temperature from 2010 to 2022") + labs(x = "Date", y = "Daily Temperature in Celcius")
+
+ggplot(graphing_odata, aes(x = date, y = daily_salinity)) + geom_line() + ggtitle("Line Graph of Water Salinity from 2010 to 2022") + labs(x = "Date", y = "Daily Salinity Levels PSU")
+
+ggplot(graphing_odata, aes(x = date, y = daily_turbidity)) + geom_line() + ggtitle("Line Graph of Turbidity Levels from 2010 to 2022") + labs(x = "Date", y = "Daily Turbidity Levels NTU")
+
+ggplot(graphing_odata, aes(x = date, y = daily_oxygen)) + geom_line() + ggtitle("Line Graph of Oxygen Levels from 2010 to 2022") + labs(x = "Date", y = "Daily Oxygen Levels ml/L")
+
+
+# Creating AR4 Model for Chlorophyll - Recall time series creation above 
+
+#chlorophyll_ts <- ts(daily_odata$daily_chlorophyll, start = c(2010, 1), frequency = 365)
+
+#chlorophyll_decomp <- stl(chlorophyll_ts, s.window = "periodic")
+
+ar4_model <- arima(chlorophyll_ts, order = c(4, 0, 0)) 
+stargazer(ar4_model, type = 'latex', title = "AR4", out = "ar4.latex")
+
+plot(residuals(ar4_model), main = "Residuals of AR(4) Model", ylab = "Residuals")
+
+acf(residuals(ar4_model), main = "ACF of Residuals")
+
+# Creating ARX Model
+oxygen_ts <- ts(daily_odata$daily_oxygen, frequency = 365, start = c(2010,1))
+turbidity_ts <- ts(daily_odata$daily_turbidity, frequency = 365, start = c(2010,1))
+salinity_ts <- ts(daily_odata$daily_salinity, frequency = 365, start = c(2010,1))
+temperature_ts <- ts(daily_odata$daily_temperature, frequency = 365, start = c(2010,1))
+
+lagged_oxygen <- stats::lag(oxygen_ts,1)
+lagged_turbidity <- stats::lag(turbidity_ts,1)
+lagged_salinity <- stats::lag(salinity_ts,1)
+lagged_temperature <- stats::lag(temperature_ts,1)
+
+xreg <- cbind(lagged_oxygen,lagged_turbidity,lagged_salinity,lagged_temperature)
+
+arx_model <- arima(chlorophyll_ts, order = c(1,0,0),xreg = xreg)
+
+stargazer(arx_model, type = 'latex', title = "1-Period Lag ARX Model", out = "arx1.latex")
+
+
+```
