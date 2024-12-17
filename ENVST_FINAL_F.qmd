@@ -263,7 +263,7 @@ Examining the Autocorrelation Function Plot we see that there is a gradual decay
 
 ## Autoregressive Model with Exogenous Variables (ARX)
 
-Next I examine new AR models to quantify the relationship between the independent variables and better understand their relative effects on chlorophyll concentration. Given that in the previous AR model only the first lagged chlorophyll variable was of strong practical significant, I've decided to only use one lag for this model to maximize the chances that we observe a relationship that is practically significant. Each independent variable is lagged one period.
+Next I examine new AR models to quantify the relationship between the independent variables and better understand their relative effects on chlorophyll concentration. Given that in the previous AR model only the first lagged chlorophyll variable was of strong practical significance, I've decided to only use one lag for this model to maximize the chances that we observe relationships that are practically significant. Each independent variable is lagged one period.
 
 ```{r}
 #| echo: false
@@ -296,11 +296,23 @@ The model initially appears to be very strong as all variables are statistically
 
 The results of this investigation suggest that chlorophyll concentration can be adequately modeled using an AR4 model, however an ARX model including other aquatic variables like salinity, dissolved oxygen, and turbidity can enhance the model's predictive accuracy.
 
+The AR4 model highlighted that the first lagged chlorophyll variable was the strongest indicator of present chlorophyll levels, accounting for approximately 88% of current levels. The second, third, and fourth lags were not as practically significant despite the fourth lag being statistically significant at the 5% level. However, the residual analysis confirmed the AR4 model's effectiveness as the plot looked relatively noisy throughout the period, aside from one small period in early 2010, indicating minimal heteroskedasticity. We also observed a decay in the ACF plot as opposed to persistent volatility throughout each lag.
+
+Although the AR4 model was rather effective in describing current chlorophyll concentration, the inclusion of exogenous variables in the ARX model provided much stronger results. First, by limiting the number of lags for each variable to one I was able to maximize the practical significance of each of the coefficients, unlike in the AR4 model where coefficients 2-4 were close to zero. Secondly, it provided us with a picture of what factors other than chlorophyll contribute to present concentration. The most practically significant predictor was the lagged dissolved oxygen parameter where a one unit increase in the most recent lagged period, results in a 1.635 ug/L increase in chlorophyll concentration. This relationship makes sense as higher chlorophyll levels are an indication of more phytoplankton, which enact photosynthesis, and thus higher levels of phytoplankton might lead to a larger byproduct of dissolved oxygen.
+
+The lagged salinity term was also practically and statistically significant, with a one unit increase in salinity leading to a 0.543 ug/L increase in chlorophyll concentration. Initially, this result was slightly confusing because my prior research suggested that salinity might have caused oxidative stress in plants and decreased photosynthetic pigments. However, because the Chesapeake Bay is an estuary, this increasing salinity may be an indication of stronger separation in the densities of the water (stratification), which tends to cause increases in chlorophyll concentration because it keeps phytoplankton trapped near the surface of the water and enhances their growth. This result could also be influenced by temperature, which was also another independent variable in the ARX model.
+
+The lagged temperature term was also both practically and statistically significant, with a one unit increase indicating a 0.419 ug/L increase in chlorophyll concentration. This finding is consistent with the research in my prior literature section as higher temperatures tend to accelerate phytoplankton growth. I also think the lagged effect provided even more interpretability as the growth acceleration in concentration requires time to occur.
+
+Overall, the ARX model provided a more comprehensive understanding of chlorophyll dynamics by identifying key environmental factors contributing to its variability, which were mainly dissolved oxygen, salinity, and temperature. This approach underscores the importance of incorporating exogenous variables into autoregressive models to better capture the complex interactions driving chlorophyll concentration in the Chesapeake Bay.
+
 # Appendix with Descriptions and Code
 
 ![Map of Chesapeake Bay](images/Chesapeake%20Bay%20Map.jpg){fig-align="center" width="340"}
 
 ## Github Link
+
+<https://github.com/deanatassi/ENVST_FINAL>
 
 ## Code
 
