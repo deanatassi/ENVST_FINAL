@@ -40,8 +40,6 @@ Despite the vast benefits phytoplankton provide, excessive levels can lead to al
 
 [^3]: National Oceanic and Atmospheric Administration. "Phytoplankton." Last modified June 16, 2024. Accessed December 11, 2024. <https://oceanservice.noaa.gov/facts/phyto.html>.
 
-Although there is no universally optimal concentration of phytoplankton, I hypothesize that algal blooms and excessive levels of phytoplankton can be identified during periods of unsually high chlorophyll concentrations.
-
 # Chesapeake Bay Background
 
 My region of focus for this study is the Chesapeake Bay, which runs off the coast of Maryland and Virginia and is connected to the Atlantic ocean at its most southern point, as shown in Figure 1. The DMV area relies heavily on the bay's ecosystem to feed local residents. It's the largest estuary in the U.S. and is one of its most productive fisheries, responsible for over 33% of annual blue crab harvest.[^4] The bay's health is therefore very important to the economic health of the local area as maintaining a sustainable bay ecosystem can ensure job stability for surrounding fisherman, higher supplies of seafood, and lower food costs for local residents. It's also very important for human health as it serves as a major source of drinking water for the region of approximately 18 million people. [^5]
@@ -56,9 +54,13 @@ A study from *Science of the Total Environment* titled, *Linking water environme
 
 [^6]: Li, Nanxin, Jian Wang, Wei Yin, Haiyan Jia, Jianfeng Xu, Rui Hao, Zhiming Zhong, and Zhihua Shi. "Contributions of Water Environment and Local Watershed Landscape to the Chlorophyll a Concentration in Reservoir Bays." Science of the Total Environment 758 (2021): 143617. <https://doi.org/10.1016/j.scitotenv.2020.143617>.
 
-A study on Chlrophyll.a concentration in the Tri An Reservoir in Vietnam noted that higher levels of dissolved oxygen during the wet season were positively associated with chlorophyll.a concentration.
+A study on Chlrophyll.a concentration in the Tri An Reservoir in Vietnam noted that higher levels of dissolved oxygen during the wet season were positively associated with chlorophyll.a concentration.[^7]
 
-Although there are no popular studies examining the relationship between water salinity and chlorophyll.a concentration, this study in the *South African Journal of Botany* titled, *Effect of salt stress on growth, chlorophyll content, lipid peroxidation and antioxidant defense systems in Phaseolus vulgaris L.,* found that photosynthetic pigments tended to decrease with increasing salinity and could increase oxidative stress.
+[^7]: Nguyen, Mai Van, Tran Dang Khanh, Hoang Huu Hoan, Hoang Cong Thanh, and Nguyen Thanh Nam. "Application of Hydrological Model to Assess Flow Variation Due to Land-Use Changes in Cam Le Basin, Vietnam." *VNU Journal of Science: Earth and Environmental Sciences* 39, no. 1 (2023): 53-64. https://doi.org/10.25073/2588-1094/vnuees.4535.
+
+Although there are no popular studies examining the relationship between water salinity and chlorophyll.a concentration, this study in the *South African Journal of Botany* titled, *Effect of salt stress on growth, chlorophyll content, lipid peroxidation and antioxidant defense systems in Phaseolus vulgaris L.,* found that photosynthetic pigments tended to decrease with increasing salinity and could increase oxidative stress.[^8]
+
+[^8]: Juknys, Rimantas, Violeta V. Daubaras, Egle V. Pärn, and Irena S. Brazaitytė. "Effect of Salt Stress on Growth, Chlorophyll Content, Lipid Peroxidation and Antioxidant Defense Systems in *Phaseolus vulgaris* L." *South African Journal of Botany* 77, no. 3 (2011): 429-435. https://doi.org/10.1016/j.sajb.2010.09.013.
 
 # Data Background
 
@@ -172,8 +174,6 @@ plot(chlorophyll_decomp2, main = "Chlorophyll Time Series Decomposition up to 20
 
 Although the increasing and decreasing periods appear to be relatively smoother, there is still no persistent directionality throughout the series, and thus we can still assume that the series is stationary for the ease of future analysis.
 
-## Water Temperature
-
 ```{r}
 #| echo: false
 #| warninng: false
@@ -183,8 +183,6 @@ ggplot(graphing_odata, aes(x = date, y = daily_temperature)) + geom_line() + ggt
 ```
 
 The water temperature contains a substantial amount of seasonality, which is to be expected as the temperature will be much lower (near freezing) in winter months and higher in warmer summer months. Even with sizable gaps in the data, one can infer what the overall trends would look like fairly accurately.
-
-## Salinity
 
 ```{r}
 #| echo: false
@@ -196,8 +194,6 @@ ggplot(graphing_odata, aes(x = date, y = daily_salinity)) + geom_line() + ggtitl
 
 Salinity levels, measured in Practical Salinity Units ("PSU") appear to stay mostly below 15 PSU from 2010 to 2020, and then doubles in early 2020 to 30 PSU. The cause of this substantial increase is unknown and it's highly unlikely that the increase is random given its significant deviation from the norm. This specific part of the data is not included in later time series and regression analysis, which only include data up to 2018, the same is true for all independent variables.
 
-## Turbidity
-
 ```{r}
 #| echo: false
 #| warninng: false
@@ -207,8 +203,6 @@ ggplot(graphing_odata, aes(x = date, y = daily_turbidity)) + geom_line() + ggtit
 ```
 
 Turbidity, measured in Nepelometric Turbidity Units ("NTU"), exhibits very high levels of variability throughout the observation period. Although the exact causes are unknown, they could certainly be an initial sign of previous algal blooms that occurred as they would certainly fog up water as a result of phytoplankton build-up. These increases can also be attributable to heavy rainstorms and flooding periods, which might serve as a better explanation for the periodicity of these large increases that occur every few years.
-
-## Dissolved Oxygen
 
 ```{r}
 #| echo: false
@@ -304,7 +298,7 @@ The lagged salinity term was also practically and statistically significant, wit
 
 The lagged temperature term was also both practically and statistically significant, with a one unit increase indicating a 0.419 ug/L increase in chlorophyll concentration. This finding is consistent with the research in my prior literature section as higher temperatures tend to accelerate phytoplankton growth. I also think the lagged effect provided even more interpretability as the growth acceleration in concentration requires time to occur.
 
-Overall, the ARX model provided a more comprehensive understanding of chlorophyll dynamics by identifying key environmental factors contributing to its variability, which were mainly dissolved oxygen, salinity, and temperature. This approach underscores the importance of incorporating exogenous variables into autoregressive models to better capture the complex interactions driving chlorophyll concentration in the Chesapeake Bay.
+Overall, the ARX model provided a more comprehensive understanding of chlorophyll dynamics by identifying key environmental factors contributing to its variability, which were mainly dissolved oxygen, salinity, and temperature. This approach underscores the importance of incorporating exogenous variables into autoregressive models to better understand what factors are driving chlorophyll concentration in the Chesapeake Bay.
 
 # Appendix with Descriptions and Code
 
